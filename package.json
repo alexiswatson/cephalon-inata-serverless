@@ -1,0 +1,47 @@
+{
+  "name": "cephalon-inata-serverless",
+  "version": "0.0.1",
+  "description": "Serverless backend for extracting time-series transaction data from Warframe Market into InfluxDB. Not affiliated with Warframe Market or Digial Extremes.",
+  "main": "webpack.config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha --reporter spec --require @babel/register",
+    "tdd": "npm run test -- --watch"
+  },
+  "author": "Alexis Watson",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexiswatson/cephalon-inata-serverless"
+  },
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.1.0",
+    "aws-sdk": "^2.648.0",
+    "axios": "^0.19.2",
+    "axios-rate-limit": "^1.2.1",
+    "source-map-support": "^0.5.16"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.4",
+    "@babel/core": "^7.9.0",
+    "@babel/preset-env": "^7.9.0",
+    "@babel/register": "^7.9.0",
+    "aws-sdk-mock": "^5.1.0",
+    "babel-loader": "^8.1.0",
+    "babel-plugin-source-map-support": "^2.1.1",
+    "bufferutil": "^4.0.1",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^7.1.1",
+    "serverless-iam-roles-per-function": "^2.0.2",
+    "serverless-pseudo-parameters": "^2.5.0",
+    "serverless-webpack": "^5.3.1",
+    "sinon": "^9.0.1",
+    "sinon-chai": "^3.5.0",
+    "utf-8-validate": "^5.0.2",
+    "webpack": "^4.42.1",
+    "webpack-node-externals": "^1.7.2"
+  }
+}

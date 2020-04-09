@@ -1,0 +1,133 @@
+service:
+  name: cephalon-inata-serverless
+
+plugins:
+  - serverless-webpack
+  - serverless-pseudo-parameters
+  - serverless-iam-roles-per-function
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  memorySize: 128
+  timeout: 300
+  environment:
+    AWS_ACCOUNT_ID: "#{AWS::AccountId}" 
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "sqs:SendMessage"
+        - "sqs:ReceiveMessage"
+        - "sqs:DeleteMessage"
+        - "sqs:GetQueueAttributes"
+        - "sqs:PurgeQueue"
+        - "sqs:GetQueueUrl"
+      Resource: ${self:custom.arn.ItemStatsQueue}
+    - Effect: "Allow"
+      Action:
+        - "sqs:ListQueues"
+      Resource: "arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:*"
+
+package:
+  individually: true
+  include:
+    - src/**
+  exclude:
+    - test/**
+
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+  names:
+    ItemStatsQueue: ${self:service.name}-${self:provider.stage}-ItemStatsQueue
+  paths:
+    InfluxDBAPIKey: /${self:service.name}/${self:provider.stage}/InfluxDBAPIKey
+    InfluxDBAPIOrg: /${self:service.name}/${self:provider.stage}/InfluxDBAPIOrg
+    InfluxDBAPIUrl: /${self:service.name}/${self:provider.stage}/InfluxDBAPIUrl
+    InfluxDBAPIBucket: /${self:service.name}/${self:provider.stage}/InfluxDBAPIBucket
+  aliases:
+    CephalonInataKeyAlias: alias/${self:service.name}/key
+  arn:
+    ItemStatsQueue: arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:${self:custom.names.ItemStatsQueue}
+    InfluxDBAPIKey: arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter${self:custom.paths.InfluxDBAPIKey}
+    InfluxDBAPIOrg: arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter${self:custom.paths.InfluxDBAPIOrg}
+  enabled:
+    dev: true
+    prod: true
+    other: false
+
+resources:
+  Resources:
+    ItemStatsQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: ${self:custom.names.ItemStatsQueue}
+        VisibilityTimeout: 360
+    CephalonInataKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: 'KMS CMK for ensuring secure management of secrets.'
+        Enabled: true
+        EnableKeyRotation: false
+        KeyPolicy:
+          Version: '2012-10-17'
+          Id: 'key-default-1'
+          Statement:
+            -
+              Sid: 'Enable IAM User Permissions'
+              Effect: Allow
+              Principal:
+                AWS: 'arn:aws:iam::#{AWS::AccountId}:root'
+              Action: 'kms:*'
+              Resource: '*'
+    CephalonInataKeyAlias:
+      Type: AWS::KMS::Alias
+      Properties:
+        AliasName: ${self:custom.aliases.CephalonInataKeyAlias}
+        TargetKeyId: !Ref CephalonInataKey
+  Outputs:
+    ItemStatsQueue:
+      Description: "The URL of the work queue for storing closed trade statistics by item."
+      Value:
+        Ref: ItemStatsQueue
+
+functions:
+  enqueueItems:
+    handler: src/enqueueItems.handler
+    reservedConcurrency: 1
+    events:
+      - schedule: 
+         rate: rate(1 hour)
+         enabled: ${self:custom.enabled.${opt:stage}, self.enabled.other}
+    environment:
+      AWS_ITEMSTATSQUEUE_URL: ${self:resources.Outputs.ItemStatsQueue.Value}
+  retrieveItemStats:
+    handler: src/retrieveItemStats.handler
+    reservedConcurrency: 1
+    events:
+      - sqs: 
+         arn: ${self:custom.arn.ItemStatsQueue}
+         batchSize: 9
+    environment:
+      INFLUXDB_API_KEY_PATH: ${self:custom.paths.InfluxDBAPIKey}
+      INFLUXDB_API_ORG_PATH: ${self:custom.paths.InfluxDBAPIOrg}
+      INFLUXDB_API_URL: ${ssm:${self:custom.paths.InfluxDBAPIUrl}}
+      INFLUXDB_API_BUCKET: ${ssm:${self:custom.paths.InfluxDBAPIBucket}}
+    iamRoleStatementInherit: true
+    iamRoleStatements:
+      -
+         Effect: Allow
+         Action:
+           - ssm:GetParameter
+         Resource: ${self:custom.arn.InfluxDBAPIKey}
+      -
+         Effect: Allow
+         Action:
+           - ssm:GetParameter
+         Resource: ${self:custom.arn.InfluxDBAPIOrg}
+      -
+         Effect: Allow
+         Action:
+           - 'kms:Decrypt'
+         Resource: !GetAtt CephalonInataKey.Arn
