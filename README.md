@@ -34,7 +34,7 @@ Data collection can be invoked manually by using `sls invoke --stage <STAGE> -f 
 
 To remove Cephalon Inata from your AWS account, simply run `sls remove --stage <STAGE>`. 
 
-Note that if you later choose to redeploy a given stage later, any SecureStrings you've added to the AWS SSM Parameter Store will need to be rotated, as they'll have been created with a KMS key that no longer exists. The alias should point to the newly created key, however.
+Note that if you later choose to redeploy a given stage, any SecureStrings you've added to the AWS SSM Parameter Store will need to be rotated, as they'll have been created with a KMS key that no longer exists. The alias should point to the newly created key, however.
 
 ## Disclaimer
 
