@@ -36,18 +36,19 @@ package:
     - test/**
 
 custom:
+  stage: ${opt:stage, self:provider.stage}
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true
   names:
-    ItemStatsQueue: ${self:service.name}-${self:provider.stage}-ItemStatsQueue
+    ItemStatsQueue: ${self:service.name}-${self:custom.stage}-ItemStatsQueue
   paths:
-    InfluxDBAPIKey: /${self:service.name}/${self:provider.stage}/InfluxDBAPIKey
-    InfluxDBAPIOrg: /${self:service.name}/${self:provider.stage}/InfluxDBAPIOrg
-    InfluxDBAPIUrl: /${self:service.name}/${self:provider.stage}/InfluxDBAPIUrl
-    InfluxDBAPIBucket: /${self:service.name}/${self:provider.stage}/InfluxDBAPIBucket
+    InfluxDBAPIKey: /${self:service.name}/${self:custom.stage}/InfluxDBAPIKey
+    InfluxDBAPIOrg: /${self:service.name}/${self:custom.stage}/InfluxDBAPIOrg
+    InfluxDBAPIUrl: /${self:service.name}/${self:custom.stage}/InfluxDBAPIUrl
+    InfluxDBAPIBucket: /${self:service.name}/${self:custom.stage}/InfluxDBAPIBucket
   aliases:
-    CephalonInataKeyAlias: alias/${self:service.name}/key
+    CephalonInataKeyAlias: alias/${self:service.name}/${self:custom.stage}/key
   arn:
     ItemStatsQueue: arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:${self:custom.names.ItemStatsQueue}
     InfluxDBAPIKey: arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter${self:custom.paths.InfluxDBAPIKey}
@@ -99,7 +100,7 @@ functions:
     events:
       - schedule: 
          rate: rate(1 hour)
-         enabled: ${self:custom.enabled.${opt:stage}, self.enabled.other}
+         enabled: ${self:custom.enabled.${self:custom.stage}, self:custom.enabled.other}
     environment:
       AWS_ITEMSTATSQUEUE_URL: ${self:resources.Outputs.ItemStatsQueue.Value}
   retrieveItemStats:
