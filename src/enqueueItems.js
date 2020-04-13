@@ -6,13 +6,14 @@ AWS.config.apiVersions = {
 };
 
 const market = WarframeMarketAPI.getInstance();
+const sqs = new AWS.SQS();
 
 // Fetch items currently available for trade from Warframe Market, and add them
 // to the ItemStatsQueue to fetch their statistics.
+//
 // Polling more frequently than hourly isn't going to produce meaningful results,
 // as they aggregate closed trades on the hour.
-export const handler = async function enqueueItems(event) {
-	const sqs = new AWS.SQS();
+export const lambda = ({ market, sqs }) => async function enqueueItems(event) {
 	const itemCatalog = await market.get.items();
 	const allEntries = itemCatalog.data.payload.items.map((item, idx) => ({
 		Id: `${idx}`,
@@ -40,3 +41,6 @@ export const handler = async function enqueueItems(event) {
 
   return Promise.resolve({ message: 'Item catalog successfully enqueued for sampling.', event });
 };
+
+// Export the handler with production dependencies injected.
+export const handler = lambda({market, sqs});

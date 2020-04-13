@@ -4,12 +4,14 @@ import { Point } from '@influxdata/influxdb-client';
 import InfluxDBAPI from './lib/InfluxDBAPI';
 import AWS from 'aws-sdk';
 
+const ssm = new AWS.SSM();
+const paramStore = SecureParameterStore.create(ssm);
 const market = WarframeMarketAPI.getInstance();
 
 // Record item stats based on unprocessed items in the ItemStatsQueue.
 // Note that reservedConcurrency *must* be set to 1, otherwise concurrent Lambdas
 // will not respect the rate limit.
-export const handler = async function retrieveItemStats(event) {
+export const lambda = ({ market, paramStore, InfluxDBAPI }) => async function retrieveItemStats(event) {
 	const { Records } = event;
 	const items = Records && Records.map(record => JSON.parse(record.body));
 
@@ -24,8 +26,7 @@ export const handler = async function retrieveItemStats(event) {
 		items.map(item => getItemStats(item))
 	);
 
-	const ssm = new AWS.SSM();
-	const paramStore = SecureParameterStore.create(ssm);
+
 	const INFLUXDB_API_KEY = await paramStore.getParam(process.env.INFLUXDB_API_KEY_PATH);
 	const INFLUXDB_API_ORG = await paramStore.getParam(process.env.INFLUXDB_API_ORG_PATH);
 
@@ -75,3 +76,6 @@ export const handler = async function retrieveItemStats(event) {
 
   return { message: 'Item batch sampled successfully.', event };
 };
+
+// Export the handler with production dependencies injected.
+export const handler = lambda({market, paramStore, InfluxDBAPI});

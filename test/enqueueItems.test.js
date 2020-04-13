@@ -1,10 +1,7 @@
-import { handler } from '../src/enqueueItems';
+import { lambda } from '../src/enqueueItems';
 import { MARKET_ENDPOINT } from '../src/lib/WarframeMarketAPI';
-import WarframeMarketAxios from '../src/lib/WarframeMarketAxios';
 import payloads from './helpers/payloads';
 import { sendMessageBatchStubImpl } from './helpers/SQS';
-import AWS from 'aws-sdk';
-import mockAWS from 'aws-sdk-mock'
 import chai, { expect } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
@@ -28,38 +25,51 @@ describe('enqueueItems Lambda Function', () => {
     ],
     "detail": {}
 	};
-	let httpGetStub;
+	let getItemsStub;
+	let deps;
 
 	beforeEach(() => {
-		mockAWS.setSDKInstance(AWS);
-		httpGetStub = sinon.stub(WarframeMarketAxios, 'get');
-		httpGetStub.resolves({
+		getItemsStub = sinon.stub().resolves({
 			status: 200,
 			statusText: 'OK',
 			data: {
 				payload
 			}
 		});
+
+		deps = {
+			market: {
+				get: {
+					items: getItemsStub
+				}
+			},
+			sqs: {
+				sendMessageBatch: sinon.stub()
+			}
+		};
 				
 		process.env.AWS_ITEMSTATSQUEUE_URL = 'https://www.example.com/queue';
 	});
 
 	afterEach(() => {
 		sinon.restore();
-		mockAWS.restore();
 		delete process.env.AWS_ITEMSTATSQUEUE_URL;
 	});
 
 	it('sends the full catalog of items to the SQS queue', async () => {
-		const sendMessageBatchSpy = sinon.spy(function({ Entries }, callback) {
-			callback(null, sendMessageBatchStubImpl(Entries, () => true))
-		});
-		mockAWS.mock('SQS', 'sendMessageBatch', sendMessageBatchSpy);
+		deps.sqs.sendMessageBatch.callsFake(({ Entries }) => ({
+			promise() {
+				return Promise.resolve(
+					sendMessageBatchStubImpl(Entries, () => true)
+				);
+			}
+		}));
 
+		const handler = lambda(deps);
 		const response = await handler(event);
 
-		expect(httpGetStub).to.have.been.calledOnce;
-    expect(sendMessageBatchSpy).to.have.callCount(Math.ceil(payload.items.length / 10));
+		expect(deps.market.get.items).to.have.been.calledOnce;
+    expect(deps.sqs.sendMessageBatch).to.have.callCount(Math.ceil(payload.items.length / 10));
 		expect(response).to.deep.equal({ 
 			message: 'Item catalog successfully enqueued for sampling.', 
 			event
@@ -68,10 +78,15 @@ describe('enqueueItems Lambda Function', () => {
 
 	it('throws an exception when any message batch has send failures in a 200 response', async () => {
 		// Reject every odd Id.	
-		const sendMessageBadBatchSpy = sinon.spy(({ Entries }, callback) => {
-			callback(null, sendMessageBatchStubImpl(Entries, ({ Id }) => (Id % 2 !== 0)))
-		});
-		mockAWS.mock('SQS', 'sendMessageBatch', sendMessageBadBatchSpy);
+		deps.sqs.sendMessageBatch.callsFake(({ Entries }) => ({
+			promise() {
+				return Promise.resolve(
+					sendMessageBatchStubImpl(Entries, ({ Id }) => (Id % 2 !== 0))
+				);
+			}
+		}));
+
+		const handler = lambda(deps);
 
 		return expect(handler(event)).to.eventually.be.rejectedWith(`Failed responses received from AWS SQS: 0: ERROR_CODE, 2: ERROR_CODE`);
 	});
