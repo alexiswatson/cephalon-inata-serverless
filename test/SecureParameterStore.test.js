@@ -1,15 +1,15 @@
-import SecureParameterStore from '../src/lib/SecureParameterStore';
 import AWS from 'aws-sdk';
 import chai, { expect } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
+import SecureParameterStore from '../src/lib/SecureParameterStore';
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
 
 AWS.config.apiVersions = {
-  ssm: '2014-11-06'
+	ssm: '2014-11-06',
 };
 
 describe('Secure Parameter Store API', () => {
@@ -18,7 +18,7 @@ describe('Secure Parameter Store API', () => {
 	const Name = 'path/to/secret';
 	const expectedArg = {
 		Name,
-		WithDecryption: true
+		WithDecryption: true,
 	};
 	let getParamStub;
 
@@ -35,9 +35,9 @@ describe('Secure Parameter Store API', () => {
 		getParamStub.withArgs(expectedArg).returns({
 			promise: () => Promise.resolve({
 				Parameter: {
-					Value: 'SecureSecret'
-				}
-			})
+					Value: 'SecureSecret',
+				},
+			}),
 		});
 
 		const value = await Store.getParam(Name);
@@ -46,23 +46,21 @@ describe('Secure Parameter Store API', () => {
 	});
 
 	it('handles errors returned by the AWS SSM Parameter Store', async () => {
-		const message = "An error has occurred."
+		const message = 'An error has occurred.';
 		getParamStub.returns({
-			promise: () => Promise.reject({
-				message
-			})
+			promise: () => Promise.reject(new Error(message)),
 		});
 
 		return expect(Store.getParam(Name)).to.eventually.be.rejectedWith(`Unable to get parameter from SSM store: ${message}`);
 	});
 
 	it('memoizes the response received from the AWS SSM Parameter Store', async () => {
-		getParamStub.withArgs(expectedArg).returns({		//
+		getParamStub.withArgs(expectedArg).returns({
 			promise: () => Promise.resolve({
 				Parameter: {
-					Value: 'SecureSecret'
-				}
-			})
+					Value: 'SecureSecret',
+				},
+			}),
 		});
 
 		const firstValue = await Store.getParam(Name);
@@ -70,16 +68,16 @@ describe('Secure Parameter Store API', () => {
 
 		expect(firstValue).to.equal('SecureSecret');
 		expect(secondValue).to.equal('SecureSecret');
-		expect(getParamStub).to.have.been.calledOnce;
+		expect(getParamStub).to.have.callCount(1);
 	});
 
 	it('flushes the entire cache', async () => {
-		getParamStub.withArgs(expectedArg).returns({		//
+		getParamStub.withArgs(expectedArg).returns({
 			promise: () => Promise.resolve({
 				Parameter: {
-					Value: 'SecureSecret'
-				}
-			})
+					Value: 'SecureSecret',
+				},
+			}),
 		});
 
 		const firstValue = await Store.getParam(Name);
@@ -88,6 +86,6 @@ describe('Secure Parameter Store API', () => {
 
 		expect(firstValue).to.equal('SecureSecret');
 		expect(secondValue).to.equal('SecureSecret');
-		expect(getParamStub).to.have.been.calledTwice;		
+		expect(getParamStub).to.have.callCount(2);
 	});
 });

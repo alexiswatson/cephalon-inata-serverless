@@ -1,5 +1,5 @@
 import axios from 'axios';
-import axiosRateLimit from 'axios-rate-limit'
+import axiosRateLimit from 'axios-rate-limit';
 
 const defaultInstance = axiosRateLimit(axios.create(), { maxRequests: 3, perMilliseconds: 1000 });
 
@@ -7,6 +7,6 @@ const defaultInstance = axiosRateLimit(axios.create(), { maxRequests: 3, perMill
 export default {
 	...defaultInstance,
 	create(config = {}) {
-		return axiosRateLimit(axios.create(config), { maxRequests: 3, perMilliseconds: 1000 })
-	}
-}
+		return axiosRateLimit(axios.create(config), { maxRequests: 3, perMilliseconds: 1000 });
+	},
+};
