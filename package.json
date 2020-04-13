@@ -1,6 +1,6 @@
 {
   "name": "cephalon-inata-serverless",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Serverless backend for extracting time-series transaction data from Warframe Market into InfluxDB. Not affiliated with Warframe Market or Digital Extremes.",
   "main": "webpack.config.js",
   "directories": {
@@ -34,6 +34,9 @@
     "bufferutil": "^4.0.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.20.2",
     "mocha": "^7.1.1",
     "serverless-iam-roles-per-function": "^2.0.2",
     "serverless-pseudo-parameters": "^2.5.0",

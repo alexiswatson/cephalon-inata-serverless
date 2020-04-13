@@ -1,10 +1,10 @@
-import { lambda } from '../src/retrieveItemStats';
-import { MARKET_ENDPOINT } from '../src/lib/WarframeMarketAPI';
-import payloads, { warframes } from './helpers/payloads';
 import chai, { expect } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
+import payloads, { warframes } from './helpers/payloads';
+import { MARKET_ENDPOINT } from '../src/lib/WarframeMarketAPI';
+import { lambda } from '../src/retrieveItemStats';
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
@@ -14,10 +14,10 @@ describe('retrieveItemStats Lambda Function', () => {
 		Records: warframes.map((frame) => ({
 			body: JSON.stringify({
 				item_name: `${frame} Prime Set`,
-				url_name: `${frame.toLowerCase()}_prime_set`
-			})
-		}))
-	}
+				url_name: `${frame.toLowerCase()}_prime_set`,
+			}),
+		})),
+	};
 	let itemStatisticsStub;
 	let getParamStub;
 	let closeStub;
@@ -33,11 +33,11 @@ describe('retrieveItemStats Lambda Function', () => {
 		deps = {
 			market: {
 				get: {
-					itemStatistics: itemStatisticsStub
-				}
+					itemStatistics: itemStatisticsStub,
+				},
 			},
 			paramStore: {
-				getParam: getParamStub
+				getParam: getParamStub,
 			},
 			InfluxDBAPI: {
 				create() {
@@ -45,11 +45,11 @@ describe('retrieveItemStats Lambda Function', () => {
 						getWriteApi() {
 							return {
 								writePoints: writePointsStub,
-								close: closeStub
+								close: closeStub,
 							};
-						}
-					}
-				}
+						},
+					};
+				},
 			},
 		};
 
@@ -73,20 +73,20 @@ describe('retrieveItemStats Lambda Function', () => {
 				status: 200,
 				statusText: 'OK',
 				data: {
-					payload: payloads[`${MARKET_ENDPOINT}/items/${frame.toLowerCase()}_prime_set/statistics`]
-				}
+					payload: payloads[`${MARKET_ENDPOINT}/items/${frame.toLowerCase()}_prime_set/statistics`],
+				},
 			});
-		})
+		});
 
 		const handler = lambda(deps);
 		const response = await handler(batch);
 
 		expect(deps.market.get.itemStatistics).to.have.callCount(warframes.length);
-		expect(writePointsStub).to.have.been.calledOnce;
-		expect(closeStub).to.have.been.calledOnce;
-		expect(response).to.deep.equal({ 
-			message: 'Item batch sampled successfully.', 
-			event: batch
+		expect(writePointsStub).to.have.callCount(1);
+		expect(closeStub).to.have.callCount(1);
+		expect(response).to.deep.equal({
+			message: 'Item batch sampled successfully.',
+			event: batch,
 		});
 	});
 });
