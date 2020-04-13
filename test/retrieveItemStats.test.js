@@ -1,11 +1,6 @@
-import { handler } from '../src/retrieveItemStats';
+import { lambda } from '../src/retrieveItemStats';
 import { MARKET_ENDPOINT } from '../src/lib/WarframeMarketAPI';
-import WarframeMarketAxios from '../src/lib/WarframeMarketAxios';
-import InfluxDBAPI from '../src/lib/InfluxDBAPI';
-import SecureParameterStore from '../src/lib/SecureParameterStore';
 import payloads, { warframes } from './helpers/payloads';
-import AWS from 'aws-sdk';
-import mockAWS from 'aws-sdk-mock';
 import chai, { expect } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
@@ -23,29 +18,40 @@ describe('retrieveItemStats Lambda Function', () => {
 			})
 		}))
 	}
-
-	let httpGetStub;
-	let influxDBStub;
-	let writePointsStub;
+	let itemStatisticsStub;
+	let getParamStub;
 	let closeStub;
-	let paramStoreStub;
+	let writePointsStub;
+	let deps;
 
 	beforeEach(() => {
-		mockAWS.setSDKInstance(AWS);
 		writePointsStub = sinon.stub();
-		closeStub = sinon.stub().resolves()
-		httpGetStub = sinon.stub(WarframeMarketAxios, 'get');
-		paramStoreStub = sinon.stub(SecureParameterStore, 'create').returns({
-			getParam: sinon.stub().returnsThis()
-		})
-		influxDBStub = sinon.stub(InfluxDBAPI, 'create').returns({
-			getWriteApi() {
-				return {
-					writePoints: writePointsStub,
-					close: closeStub
-				};
-			}
-		})
+		getParamStub = sinon.stub();
+		closeStub = sinon.stub().resolves();
+		itemStatisticsStub = sinon.stub();
+
+		deps = {
+			market: {
+				get: {
+					itemStatistics: itemStatisticsStub
+				}
+			},
+			paramStore: {
+				getParam: getParamStub
+			},
+			InfluxDBAPI: {
+				create() {
+					return {
+						getWriteApi() {
+							return {
+								writePoints: writePointsStub,
+								close: closeStub
+							};
+						}
+					}
+				}
+			},
+		};
 
 		process.env.INFLUXDB_API_KEY_PATH = 'path/to/api/key';
 		process.env.INFLUXDB_API_ORG_PATH = 'path/to/api/org';
@@ -55,7 +61,6 @@ describe('retrieveItemStats Lambda Function', () => {
 
 	afterEach(() => {
 		sinon.restore();
-		mockAWS.restore();
 		delete process.env.INFLUXDB_API_KEY_PATH;
 		delete process.env.INFLUXDB_API_ORG_PATH;
 		delete process.env.INFLUXDB_API_URL;
@@ -64,7 +69,7 @@ describe('retrieveItemStats Lambda Function', () => {
 
 	it('samples item statistics from a batch of item records', async () => {
 		warframes.forEach((frame, idx) => {
-			httpGetStub.onCall(idx).resolves({
+			itemStatisticsStub.onCall(idx).resolves({
 				status: 200,
 				statusText: 'OK',
 				data: {
@@ -73,12 +78,10 @@ describe('retrieveItemStats Lambda Function', () => {
 			});
 		})
 
-		const getParameterSpy = sinon.spy();
-		mockAWS.mock('SSM', 'getParameter', getParameterSpy);
-
+		const handler = lambda(deps);
 		const response = await handler(batch);
 
-		expect(httpGetStub).to.have.callCount(warframes.length);
+		expect(deps.market.get.itemStatistics).to.have.callCount(warframes.length);
 		expect(writePointsStub).to.have.been.calledOnce;
 		expect(closeStub).to.have.been.calledOnce;
 		expect(response).to.deep.equal({ 

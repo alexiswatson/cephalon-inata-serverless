@@ -1,6 +1,6 @@
 {
   "name": "cephalon-inata-serverless",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Serverless backend for extracting time-series transaction data from Warframe Market into InfluxDB. Not affiliated with Warframe Market or Digital Extremes.",
   "main": "webpack.config.js",
   "directories": {
