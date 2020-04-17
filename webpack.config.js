@@ -10,7 +10,7 @@ module.exports = {
 	externals: [nodeExternals()],
 	mode: slsw.lib.webpack.isLocal ? 'development' : 'production',
 	optimization: {
-		minimize: true, // false,
+		minimize: true,
 	},
 	// Run babel on all .js files and skip those in node_modules
 	module: {
