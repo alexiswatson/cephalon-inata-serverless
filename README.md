@@ -28,7 +28,7 @@ Secrets and configuration settings are stored and retrieved via the SSM Paramete
 
 6. Deploy Cephalon Inata to your AWS account using `serverless deploy --stage dev` from the repository root. The `dev` stage will require manual invocation to collect data—replace it with `--stage prod` to enable automatic sampling every hour. The default stage when omitting the `--stage` flag is `dev`.
 7. In your AWS console, return to the SSM Parameter Store as you had in Step 4.
-8. Cephalon Inata requires two additional SecretString parameters to connect to your InfluxDB Cloud bucket, using the KMS key it generated during deployment. Replace `{STAGE}` with the stage you just deployed (`dev`, `prod`, etc.):
+8. Cephalon Inata requires two additional SecureString parameters to connect to your InfluxDB Cloud bucket, using the KMS key it generated during deployment. Replace `{STAGE}` with the stage you just deployed (`dev`, `prod`, etc.):
 
     * **Path:** `/cephalon-inata-serverless/{STAGE}/InfluxDBAPIKey`<br>**Type:** SecureString<br>**Value:** A token with Write access to your InfluxDB bucket. Generate one in your InfluxDB Cloud account under Data > Tokens.<br>**Key:** `alias/cephalon-inata-serverless/{STAGE}/key`
 
